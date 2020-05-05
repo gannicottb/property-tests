@@ -10,8 +10,11 @@ object DemoSpec extends DefaultRunnableSpec {
 
         check(Gen.anyString, Gen.anyString, Gen.anyString) {
           case (a, b, c) =>
-            assert(concat(a, b, c))(
-              containsString(a) && containsString(b) && containsString(c)
+            val result = concat(a, b, c)
+            assert(result)(
+              startsWithString(a) && containsString(b) && endsWithString(c) && hasSizeString(
+                equalTo(a.length + b.length + c.length)
+              )
             )
         }
       },
@@ -23,26 +26,18 @@ object DemoSpec extends DefaultRunnableSpec {
         }
       },
       testM("cross") {
-        // Turns ("foo", 0) into "fff"
-        def replacer(s: String, index: Int): String = {
-          Vector.fill(s.length)(s.charAt(index)).mkString
-        }
+        def repeater(s: String, times: Int) = s * times
+        val stringAndInt = Gen.anyString cross Gen.int(0, 1000)
 
-        val stringAndIndex = Gen.anyString
-          .cross(Gen.anyInt)
-          .map {
-            case (s, i) if s.nonEmpty => (s, i.abs % s.length)
-            case _                    => ("a", 0) // we aren't testing with empty strings here
-          }
-
-        check(stringAndIndex) {
+        check(stringAndInt) {
           case (s, i) =>
-            val result = replacer(s, i)
-            assert(result.length)(equalTo(s.length)) && assert(result)(
-              equalTo(s.charAt(i).toString * s.length)
-            )
+            assert(repeater(s, i))(hasSizeString(equalTo(s.length * i)))
         }
-
+      },
+      testM("round tripping - int to string to int") {
+        check(Gen.anyInt) { i =>
+          assert(i)(equalTo(i.toString.toInt))
+        }
       }
     )
 }
